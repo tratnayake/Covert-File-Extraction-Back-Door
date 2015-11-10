@@ -21,4 +21,10 @@ def sendPortKnocks(protocol,dstAddress,dports):
 def listenSuccess():
     print "Success"
 
-sendPortKnocks("TCP","192.168.0.17",[8000,8001,8002]);
+sendPortKnocks("TCP","192.168.0.1",[8000,8001,8002]);
+
+def listen(packet):
+    if packet.haslayer(TCP):
+        packet.show()
+
+sniff(filter="ip",prn=listen)
