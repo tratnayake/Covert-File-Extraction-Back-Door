@@ -27,12 +27,15 @@ def checkTimes(portsKnocked,gap):
     #Check the first packet in the range (3)
     startTimestamp = portsKnocked[last-2][2]
     diff = lastTimestamp - startTimestamp
-    print diff
-    print datetime.timedelta(seconds=5)
+    if diff <=gap:
+        return True
+    else:
+        print 'Gap too long :('
+        return False
 
 
 #A Successful port knock has occurred if:
-def checkKnocks():
+def checkKnocks(clientIP,serverIP,sourcePort,destinationPort):
     global portsKnocked
     print portsKnocked
     #There have been 3 knocks
@@ -43,12 +46,20 @@ def checkKnocks():
         if(checkSequence(portsKnocked,[8000,8001,8002])):
             print "Port Knock Sequence CORRECT"
             #AND if the knocks all occured within a span of 5 seconds
-            checkTimes(portsKnocked,5)
+            if(checkTimes(portsKnocked,5)):
+                portsKnocked = []
+                print "Port Knocks PASSED!"
+                packet = (IP(src=serverIP,dst=clientIP)/TCP(sport=destinationPort,dport=sourcePort)/ "test")
+                send(packet)
+            else:
+                portsKnocked = []
+        else:
+            portsKnocked=[]
 
 
     #They occured within 5 seconds of each other
 
-def handleIPknocks(packet):
+def handleKnocks(packet):
     global portsKnocked
     global counter
     #The TTL key can be taken from the config file
@@ -61,13 +72,13 @@ def handleIPknocks(packet):
             print packet["TCP"].dport
             portsKnocked.append(["TCP",counter,timestamp,packet["TCP"].dport])
             print "Packet added to TCP ports knocked"
-            checkKnocks()
+            checkKnocks(packet["IP"].src,packet["IP"].dst,packet["TCP"].sport,packet["TCP"].dport)
 
         if(packet.haslayer(UDP)):
             portsKnocked.append(["udp",counter,timestamp,packet["udp"].dport])
             print "Paacket added to UDP ports knocked"
-            checkKnocks()
+            checkKnocks(packet["IP"].src,packet["IP"].dst,packet["UDP"].sport,packet["UDP"].dport)
 
 
 #Listen for Port knocks
-sniff(filter="ip", prn=handleIPknocks)
+sniff(filter="ip", prn=handleKnocks)
