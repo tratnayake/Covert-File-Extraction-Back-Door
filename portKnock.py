@@ -13,7 +13,7 @@ import time
 def sendPortKnocks(protocol,dstAddress,dports):
     if(protocol == "TCP"):
         for port in dports:
-            packet = IP(dst="192.168.0.17",ttl=71)/ TCP(dport=7000, sport=80)
+            packet = IP(dst="192.168.0.17",ttl=71)/ TCP(dport=port, sport=80)
             send(packet)
             pass
 
