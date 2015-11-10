@@ -38,6 +38,7 @@ def checkKnocks():
     #There have been 3 knocks
     if (len(portsKnocked) >= 3):
         print "3 or more ports knocked"
+        #TODO: Check if it's TCP or UDP as well
         # AND If the sequence matches 7000,8000,9000
         if(checkSequence(portsKnocked,[8000,8001,8002])):
             print "Port Knock Sequence CORRECT"
