@@ -6,7 +6,7 @@ import uuid #Used to generate UID's
 import os # Used for executing commands on shell.
 
 #Inputs
-victimIP = "192.168.0.15"
+victimIP = "192.168.0.23"
 ttlKey = 164
 srcPort = 80
 dstPort = 8000
@@ -15,7 +15,7 @@ IV = "abcdefghijklmnop"
 protocol = "TCP"
 password = "TEST!"
 authentication = "TEST!"
-localIP = "192.168.0.16"
+localIP = "192.168.0.22"
 messages = []
 #Encrypt the message
 def encrypt(message):
@@ -322,4 +322,4 @@ while True:
             sys.exit()
         else:
             sendmessage("TCP",command)
-            sniff(timeout=2,filter="ip and host 192.168.0.15", prn=handle)
+            sniff(timeout=10, filter="ip", prn=handle)
