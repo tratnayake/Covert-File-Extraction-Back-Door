@@ -180,12 +180,6 @@ def deleteCommand(UID):
     #print "After delete, the lenght is " + str(len(messages))
 
 
-
-
-
-
-
-
 ############################################SENDING BACK###################
 def chunkMessage(message,protocol):
     # print "Message is "  + message

