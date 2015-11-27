@@ -27,7 +27,8 @@ def sniffing():
 
 def handle(packet):
     #TODO: FIX THIS
-    if(packet[IP].src != localIP):
+    if(packet[IP].src != localIP and packet[IP].src != "0.0.0.0" and packet[IP].src != "127.0.0.1"):
+        #print packet[IP].src
         if authenticate(packet):
             global clientIP
             clientIP = packet[IP].src
@@ -340,8 +341,6 @@ def messageToBits(message):
     return messageData
 
 def fileToBits(filePath):
-    print "HERE"
-
     # fileName = str.split("/")
     print "File path is " + filePath
     file = open(filePath, "rb")
@@ -370,7 +369,6 @@ def fileMonitor():
     watch = pyinotify.IN_CREATE | pyinotify.IN_MODIFY
     #checks for any new files and modified files
     wm = pyinotify.WatchManager()
-
     wm.add_watch(monitorDir, watch , change, rec = True, auto_add = True)
     notifier = pyinotify.Notifier(wm)
     notifier.loop()
