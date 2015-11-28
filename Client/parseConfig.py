@@ -16,9 +16,9 @@ def parseConfigFile(configFileName):
 		if (parseKey == "dstPort"):
 			global dstPort
 			dstPort = int(parseValue)
-		if (parseKey == "key"):
-			global key
-			key = parseValue.rstrip("\n")
+		if (parseKey == "encryptionKey"):
+			global encryptionKey
+			encryptionKey = parseValue.rstrip("\n")
 		if (parseKey == "IV"):
 			global IV
 			IV = parseValue.rstrip("\n")
