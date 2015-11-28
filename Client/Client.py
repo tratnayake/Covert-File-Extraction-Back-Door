@@ -362,14 +362,31 @@ def receiveFile(packet):
                     # decrypt the covert contents
                     # print "Covert content = " + str(packet[TCP].seq)
                     # convert to binary
-                    covertContent = bin(packet[TCP].seq)[2:].zfill(length)
+                    covertContent = 0
+                    seqContent = bin(packet[TCP].seq)[2:]
+                    #Converts the bits to the nearest divisible by 8
+                    if len(seqContent) < 8:
+                        covertContent = bin(packet[TCP].seq)[2:].zfill(8)
+                    elif len(seqContent) > 8 and len(seqContent) < 16:
+                        covertContent = bin(packet[TCP].seq)[2:].zfill(16)
+                    elif len(seqContent) > 16 and len(seqContent) < 24:
+                        covertContent = bin(packet[TCP].seq)[2:].zfill(24)
+                    elif len(seqContent) > 24 and len(seqContent) < 32:
+                        covertContent = bin(packet[TCP].seq)[2:].zfill(32)
+
                     # print "binary is " + covertContent
                 elif(packet.haslayer(UDP)):
                     length = 16
                     # decrypt the covert contents
                     # print "Covert content = " + str(packet[UDP].sport)
                     # convert to binary
-                    covertContent = bin(packet[UDP].sport)[2:].zfill(length)
+                    seqContent = bin(packet[UDP].sport)[2:]
+                    covertContent = 0
+
+                    if len(seqContent) < 8:
+                        covertContent = bin(packet[UDP].sport)[2:].zfill(8)
+                    elif len(seqContent) > 8 and len(seqContent) < 16:
+                        covertContent = bin(packet[UDP].sport)[2:].zfill(16)
                     # print "binary is " + covertContent
                 # If there is only 1 message for this command, reconstruct it
                 #if(total == 1):
