@@ -1,4 +1,4 @@
-victimIP=192.168.0.7
+victimIP=192.168.0.17
 ttlKey=164
 srcPort=80
 dstPort=8000
@@ -7,5 +7,5 @@ IV=abcdefghijklmnop
 protocol=TCP
 password=TEST!
 authentication=TEST!
-localIP=192.168.0.6
-saveDir=./copy
+localIP=192.168.0.16
+saveDir=copy/

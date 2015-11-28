@@ -362,17 +362,10 @@ def receiveFile(packet):
                     # decrypt the covert contents
                     # print "Covert content = " + str(packet[TCP].seq)
                     # convert to binary
-                    covertContent = 0
-                    seqContent = bin(packet[TCP].seq)[2:]
+
+                    field = packet[TCP].seq
                     #Converts the bits to the nearest divisible by 8
-                    if len(seqContent) < 8:
-                        covertContent = bin(packet[TCP].seq)[2:].zfill(8)
-                    elif len(seqContent) > 8 and len(seqContent) < 16:
-                        covertContent = bin(packet[TCP].seq)[2:].zfill(16)
-                    elif len(seqContent) > 16 and len(seqContent) < 24:
-                        covertContent = bin(packet[TCP].seq)[2:].zfill(24)
-                    elif len(seqContent) > 24 and len(seqContent) < 32:
-                        covertContent = bin(packet[TCP].seq)[2:].zfill(32)
+                    covertContent = lengthChecker("TCP",field)
 
                     # print "binary is " + covertContent
                 elif(packet.haslayer(UDP)):
@@ -380,13 +373,9 @@ def receiveFile(packet):
                     # decrypt the covert contents
                     # print "Covert content = " + str(packet[UDP].sport)
                     # convert to binary
-                    seqContent = bin(packet[UDP].sport)[2:]
-                    covertContent = 0
+                    field = packet[UDP].sport)
+                    covertContent = lengthChecker("UDP",field)
 
-                    if len(seqContent) < 8:
-                        covertContent = bin(packet[UDP].sport)[2:].zfill(8)
-                    elif len(seqContent) > 8 and len(seqContent) < 16:
-                        covertContent = bin(packet[UDP].sport)[2:].zfill(16)
                     # print "binary is " + covertContent
                 # If there is only 1 message for this command, reconstruct it
                 #if(total == 1):
@@ -399,6 +388,25 @@ def receiveFile(packet):
                     if(checkCommands(UID)):
                         newFile = writeFile(UID)
 
+def lengthChecker(type,field):
+    covertContent = 0
+    seqContent = bin(field)[2:]
+    if (type == "TCP"):
+        if len(seqContent) < 8:
+            covertContent = bin(field)[2:].zfill(8)
+        elif len(seqContent) > 8 and len(seqContent) < 16:
+            covertContent = bin(field)[2:].zfill(16)
+        elif len(seqContent) > 16 and len(seqContent) < 24:
+            covertContent = bin(field)[2:].zfill(24)
+        elif len(seqContent) > 24 and len(seqContent) < 32:
+            covertContent = bin(field)[2:].zfill(32)
+    elif(type == "UDP"):
+        if len(seqContent) < 8:
+            covertContent = bin(field)[2:].zfill(8)
+        elif len(seqContent) > 8 and len(seqContent) < 16:
+            covertContent = bin(field)[2:].zfill(16)
+    return covertContent
+    
 def writeFile(UID):
     for element in messages:
         text = ""
