@@ -1,9 +1,8 @@
-localIP=192.168.0.7
+localIP=192.168.0.16
 ttlKey=164
 srcPort=80
 dstPort=53
 key=0123456789abcdef
 IV=abcdefghijklmnop
 authentication=TEST!
-clientIP=192.168.0.6
 monitorDir=./monitor

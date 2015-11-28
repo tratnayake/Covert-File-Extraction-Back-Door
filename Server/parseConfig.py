@@ -25,9 +25,9 @@ def parseConfigFile(configFileName):
 		if (parseKey == "authentication"):
 			global authentication
 			authentication = parseValue.rstrip("\n")
-		if (parseKey == "clientIP"):
-			global clientIP
-			clientIP = parseValue.rstrip("\n")
+		# if (parseKey == "clientIP"):
+		# 	global clientIP
+		# 	clientIP = parseValue.rstrip("\n")
 		if (parseKey == "monitorDir"):
 			global monitorDir
 			monitorDir = parseValue.rstrip("\n")

