@@ -446,17 +446,14 @@ def writeFile(UID):
             # print str(chunks)
 
             binaryString = ''.join(chunks)
-            print "binaryString " + binaryString + "\n"
             #print "Binary string is  " + binaryString
 
-            delimiter = binaryString.index('\n')
-
+            delimiter = binaryString.index('00000000')
             #Everything until the delimiter is the file name
-            fileName = decrypt(binaryString[0:delimiter])
-            decryptedFileName = fileName
-            print "File name is " + decryptedFileName
+            fileName = binaryString[0:delimiter]
+            decryptedFileName = decrypt(fileName)
 
-            fileContents = ''.join(chunks[delimiter+1:])
+            fileContents = ''.join(chunks[delimiter+8:])
             print fileContents
 
             createFile = open(saveDir + decryptedFileName, 'w')

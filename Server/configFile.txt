@@ -4,5 +4,6 @@ srcPort=80
 dstPort=53
 key=0123456789abcdef
 IV=abcdefghijklmnop
+clientIP=192.168.0.17
 authentication=TEST!
 monitorDir=./monitor

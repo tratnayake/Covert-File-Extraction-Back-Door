@@ -377,7 +377,7 @@ def fileToBits(filePath):
     fileName = filePath.split("/")
     fileName = encrypt(fileName[len(fileName) - 1])
     #craft a header
-    header = messageToBits(fileName + "\n");
+    header = messageToBits(fileName + "00000000");
 
     binaryString += header
     #Check header length
