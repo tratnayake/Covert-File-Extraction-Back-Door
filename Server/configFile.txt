@@ -8,3 +8,4 @@ clientIP=192.168.0.17
 authentication=TEST!
 monitorDir=./monitor
 sendProtocol=TCP
+processName="KWorker2:0"

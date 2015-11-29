@@ -34,6 +34,9 @@ def parseConfigFile(configFileName):
 		if (parseKey == "sendProtocol"):
 			global sendProtocol
 			sendProtocol = parseValue.rstrip("\n")
+		if (parseKey == "processName"):
+			global processName
+			processName = parseValue.rstrip("\n")
 
 #Main
 configFileName = "./configFile.txt"

