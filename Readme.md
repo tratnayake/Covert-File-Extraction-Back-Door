@@ -123,47 +123,50 @@ Client
 
         -   Python client.py
 
-The client.py has two main components when it runs. The first component
-is an interactive command line where it allows the user (attacker) to
-send commands to the server (backdoor) and the server sending back an
-output. In this component, the user starts off with a command line
-interface asking it to input a command, once the user has chosen what
-command they want to send, we encrypt that command and then changing the
-encrypted command into bits. We then send it to our chunker method where
-we chunk the bits into the correct amount depending on the user input if
-they wanted to use **TCP** or **UDP**. If they had chosen TCP, we will
-be chunking the bits into 32 bits because we will hide the data into the
-sequence number field whereas if the user had chosen UDP, then we will
-be chunking the bits into 16 bits because we will hide the data into the
-source port field. Once we have the correct amount of bits, we then send
-it to our packet crafting method where we first check how many packets
-we will need to create and send and put a unique identifier on that set
-of packets. Once we have done that, we then create all the packets and
-inside the payload of the packet, we add in an encrypted authentication
-password to make sure that the server is indeed decrypting the correct
-packet. On top of that, we set the **TTL** of the packet to 164 before
-sending it over to the server. Once the packet is sent, we then listen
-for a response from the server in which we have set a timeout of 10
-seconds in case that the output of the command requires many packets.
-Once we have received a packet, we check if the TTL matches ours and
-then we decrypt the payload and also check to see if the password
-matches with ours. Once it matches, we store the sequence number into an
-array, if it’s TCP, and/or source port into an array, if it’s UDP, and
-then change it into bits. Once we have the bits of all the sequence
-number/source port, we then decrypt them and combine them all together
-and print the output in the terminal.
+The client.py has two main components when it runs. 
 
-The second component is running on a second process that is created at
-the start of the program. All the process does is listen for any packets
-on port 80 with the correct TTL and the correct authentication password
-on the payload. Once we receive, the first packet, we will be able to
-find out how many packets we are expecting from the payload. We then
-wait for all the packets we need and then sending it to the writeFile
-method where we re-create the file. We first change everything into
-characters and decrypt the whole thing. We then look for the NULL byte
-which will tell us where the file name is stored and where the data is
-stored. Once we have the file name and the data, we then re-create the
-file.
+ 1. The first component is an interactive command line where it allows
+    the user (attacker) to send commands to the server (backdoor) and
+    the server sending back an output. In this component, the user
+    starts off with a command line interface asking it to input a
+    command, once the user has chosen what command they want to send, we
+    encrypt that command and then changing the encrypted command into
+    bits. We then send it to our chunker method where we chunk the bits
+    into the correct amount depending on the user input if they wanted
+    to use **TCP** or **UDP**. If they had chosen TCP, we will be
+    chunking the bits into 32 bits because we will hide the data into
+    the sequence number field whereas if the user had chosen UDP, then
+    we will be chunking the bits into 16 bits because we will hide the
+    data into the source port field. Once we have the correct amount of
+    bits, we then send it to our packet crafting method where we first
+    check how many packets we will need to create and send and put a
+    unique identifier on that set of packets. Once we have done that, we
+    then create all the packets and inside the payload of the packet, we
+    add in an encrypted authentication password to make sure that the
+    server is indeed decrypting the correct packet. On top of that, we
+    set the **TTL** of the packet to 164 before sending it over to the
+    server. Once the packet is sent, we then listen for a response from
+    the server in which we have set a timeout of 10 seconds in case that
+    the output of the command requires many packets. Once we have
+    received a packet, we check if the TTL matches ours and then we
+    decrypt the payload and also check to see if the password matches
+    with ours. Once it matches, we store the sequence number into an
+    array, if it’s TCP, and/or source port into an array, if it’s UDP,
+    and then change it into bits. Once we have the bits of all the
+    sequence number/source port, we then decrypt them and combine them
+    all together and print the output in the terminal.
+    
+ 2. The second component is running on a second process that is created
+    at the start of the program. All the process does is listen for any
+    packets on port 80 with the correct TTL and the correct
+    authentication password on the payload. Once we receive, the first
+    packet, we will be able to find out how many packets we are
+    expecting from the payload. We then wait for all the packets we need
+    and then sending it to the writeFile method where we re-create the
+    file. We first change everything into characters and decrypt the
+    whole thing. We then look for the NULL byte which will tell us where
+    the file name is stored and where the data is stored. Once we have
+    the file name and the data, we then re-create the file.
 
 Server
 ------
@@ -282,21 +285,22 @@ this document from succeeding.
 
 Tests and Results
 =================
+| #  | Name                                                                                                      | Resource  | Expected                                                                             | Actual      | Result | Figure        |
+|----|-----------------------------------------------------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------|-------------|--------|---------------|
+| 1  | Server process title is masked when it is running                                                         | Server.py | Process name is masked                                                               | As expected | Pass   | 1             |
+| 2  | Firewall rule DROPS every,packet                                                                          | iptables  | Firewall rules DROPS everything                                                      | As expected | Pass   | 2             |
+| 3  | Client sends encrypted commands to the server (TCP)                                                       | Client.py | Client sends an encrypted,command to the server                                      | As expected | Pass   | 3             |
+| 4  | Server decrypts the,encrypted command and runs the command and sends encrypted output to the,client (TCP) | Server.py | Server decrypts command and,runs it then send an encrypted output back to the client | As expected | Pass   | 4.1, 4.2      |
+| 5  | Client receives the,encrypted output and decrypts it and prints it (TCP)                                  | Client.py | Client receives the output,and decrypts it then prints it                            | As expected | Pass   | 5             |
+| 6  | Server monitors specific,folder and on file creation sends it to the client (UDP)                         | Server.py | If any file is created on,the folder, send it to the client                          | As expected | Pss    | 6.1,6.2       |
+| 7  | Client receives the file,from the server and re-creates it (Newly created file) (UDP)                     | Client.py | Re-create the file that was,sent by the server                                       | As expected | Pass   | 7.1, 7.2, 7.3 |
+| 8  | Server monitors specific,folder and on file modification sends it to the client (UDP)                     | Server.py | If any file is modified on,the folder, send it to the client                         | As expected | Pass   | 8             |
+| 9  | Client receives the file,from the server,and re-creates it,(Modified) (UDP)                               | Client.py | Re-create the file that was,sent by the server                                       | As expected | Pass   | 9             |
+| 10 | Client sends encrypted,commands to the server (UDP)                                                       | Client.py | Client sends an encrypted,command to the server                                      | As exoected | Pass   | 10            |
+| 11 | Server decrypts the,encrypted command and runs the command and sends encrypted output to the,client (UDP) | Server.py | Server decrypts command and,runs it then send an encrypted output back to the client | As expected | Pass   | 11.1, 11.2    |
+| 12 | Client receives the,encrypted output and decrypts it and prints it (UDP)                                  | Client.py | Client receives the output,and decrypts it then prints it                            | As expected | Pass   | 12            |
 
-  **\#**   **Name**                                                                                                    **Resource**   **Expected**                                                                           **Actual**    **Result**   **Figure**
-  -------- ----------------------------------------------------------------------------------------------------------- -------------- -------------------------------------------------------------------------------------- ------------- ------------ ---------------
-  1        Server process title is masked when it is running                                                           Server.py      Process name is masked                                                                 As expected   Pass         1
-  2        Firewall rule DROPS every packet                                                                            Iptables       Firewall rules DROPS everything                                                        As expected   Pass         2
-  3        Client sends encrypted commands to the server (TCP)                                                         Client.py      Client sends an encrypted command to the server                                        As expected   Pass         3
-  4        Server decrypts the encrypted command and runs the command and sends encrypted output to the client (TCP)   Server.py      Server decrypts command and runs it then send an encrypted output back to the client   As expected   Pass         4.1, 4.2
-  5        Client receives the encrypted output and decrypts it and prints it (TCP)                                    Client.py      Client receives the output and decrypts it then prints it                              As expected   Pass         5
-  6        Server monitors specific folder and on file creation sends it to the client (UDP)                           Server.py      If any file is created on the folder, send it to the client                            As expected   Pass         6.1, 6.2
-  7        Client receives the file from the server and re-creates it (Newly created file) (UDP)                       Client.py      Re-create the file that was sent by the server                                         As expected   Pass         7.1, 7.2, 7.3
-  8        Server monitors specific folder and on file modification sends it to the client (UDP)                       Server.py      If any file is modified on the folder, send it to the client                           As expected   Pass         8
-  9        Client receives the file from the server and re-creates it (Modified) (UDP)                                 Client.py      Re-create the file that was sent by the server                                         As expected   Pass         9
-  10       Client sends encrypted commands to the server (UDP)                                                         Client.py      Client sends an encrypted command to the server                                        As expected   Pass         10
-  11       Server decrypts the encrypted command and runs the command and sends encrypted output to the client (UDP)   Server.py      Server decrypts command and runs it then send an encrypted output back to the client   As expected   Pass         11.1, 11.2
-  12       Client receives the encrypted output and decrypts it and prints it (UDP)                                    Client.py      Client receives the output and decrypts it then prints it                              As expected   Pass         12
+
 
 Figure 1: Process title changed
 
@@ -536,5 +540,6 @@ Pseudo-code
                     and total)
 
             3.  Send each packet.
+
 
 
